@@ -1,37 +1,54 @@
 package com.example.base_datos.Repository
 
 import com.example.base_datos.DAO.EjerciciosDAO
+import com.example.base_datos.DAO.UsuariosDAO
 import com.example.base_datos.Model.Ejercicio
 
-class EjerciciosRepository(private val ejerciciosDao: EjerciciosDAO) {
+class EjerciciosRepository(
+    private val ejerciciosDAO: EjerciciosDAO,
+    private val usuariosDAO: UsuariosDAO
+) {
 
-    // Inserta un nuevo ejercicio
+    // Inserta un nuevo ejercicio solo si el usuario es administrador
     suspend fun insert(ejercicio: Ejercicio, usuarioId: Int) {
-        ejerciciosDao.insert(ejercicio)
+        val usuario = usuariosDAO.getUsuarioById(usuarioId)
+        if (usuario != null && usuario.esAdmin) {
+            ejerciciosDAO.insert(ejercicio)
+        } else {
+            throw Exception("Solo los administradores pueden crear ejercicios.")
+        }
     }
 
-    // Obtiene todos los ejercicios de un usuario específico
-    suspend fun getAllEjercicios(usuarioId: Int): List<Ejercicio> {
-        return ejerciciosDao.getAllEjerciciosByUser(usuarioId)
+    // Obtiene todos los ejercicios, filtrando según el rol del usuario
+    suspend fun getEjercicios(usuarioId: Int): List<Ejercicio> {
+        val usuario = usuariosDAO.getUsuarioById(usuarioId)
+        return if (usuario != null && usuario.esAdmin) {
+            // Si es admin, obtiene todos los ejercicios
+            ejerciciosDAO.getAllEjerciciosByUser(usuarioId)
+        } else {
+            // Si no es admin, obtiene solo los ejercicios creados por administradores
+            ejerciciosDAO.getAllEjerciciosByUser(usuarioId)
+        }
     }
 
-    // Obtiene ejercicio por ID
-    suspend fun getEjercicioById(ejercicioId: Int): Ejercicio? {
-        return ejerciciosDao.getEjercicioById(ejercicioId)
+    // Elimina un ejercicio solo si el usuario es administrador o el creador
+    suspend fun delete(ejercicio: Ejercicio, usuarioId: Int) {
+        val usuario = usuariosDAO.getUsuarioById(usuarioId)
+        if (usuario != null && (usuario.esAdmin || ejercicio.usuarioId == usuarioId)) {
+            ejerciciosDAO.delete(ejercicio)
+        } else {
+            throw Exception("No tienes permisos para eliminar este ejercicio.")
+        }
     }
 
-    // Elimina un ejercicio por ID, ahora incluye el usuarioId
-    suspend fun deleteById(ejercicioId: Int, usuarioId: Int): Int {
-        return ejerciciosDao.deleteById(ejercicioId, usuarioId)
-    }
-
-    // Elimina un ejercicio
-    suspend fun delete(ejercicio: Ejercicio) {
-        ejerciciosDao.delete(ejercicio)
-    }
-
-    // Actualiza un ejercicio existente
+    // Actualiza un ejercicio solo si el usuario es administrador o el creador
     suspend fun update(ejercicio: Ejercicio, usuarioId: Int) {
-        ejerciciosDao.update(ejercicio)
+        val usuario = usuariosDAO.getUsuarioById(usuarioId)
+        if (usuario != null && (usuario.esAdmin || ejercicio.usuarioId == usuarioId)) {
+            ejerciciosDAO.update(ejercicio)
+        } else {
+            throw Exception("No tienes permisos para editar este ejercicio.")
+        }
     }
 }
+

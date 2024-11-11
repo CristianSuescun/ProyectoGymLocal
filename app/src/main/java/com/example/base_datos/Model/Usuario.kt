@@ -9,5 +9,6 @@ data class Usuario(
     val nombre: String,
     val email: String,
     val password: String,
-    val fechaRegistro: String // Usa el formato adecuado para fecha
+    val fechaRegistro: String, // Usa el formato adecuado para fecha
+    val esAdmin: Boolean = false // Campo para indicar si es administrador
 )

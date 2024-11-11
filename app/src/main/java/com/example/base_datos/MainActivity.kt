@@ -40,7 +40,9 @@ class MainActivity : ComponentActivity() {
         usuariosRepository = UsuariosRepository(usuariosDAO)
         rutinasRepository = RutinasRepository(db.rutinasDao())
         ejerciciosDAO = db.ejerciciosDao()
-        ejerciciosRepository = EjerciciosRepository(ejerciciosDAO)
+
+        // Aquí debes pasar tanto 'ejerciciosDAO' como 'usuariosDAO' al repositorio de Ejercicios
+        ejerciciosRepository = EjerciciosRepository(ejerciciosDAO, usuariosDAO)
 
         enableEdgeToEdge()
         setContent {
@@ -84,10 +86,12 @@ class MainActivity : ComponentActivity() {
                             val usuarioId = backStackEntry.arguments?.getString("usuarioId")?.toInt() ?: 0
                             EjerciciosScreen(
                                 ejerciciosRepository = ejerciciosRepository,
+                                usuariosRepository = usuariosRepository,  // Aquí pasas el usuariosRepository
                                 navController = navController,
                                 usuarioId = usuarioId
                             )
                         }
+
                     }
                 }
             }

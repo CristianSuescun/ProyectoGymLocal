@@ -5,9 +5,21 @@ import com.example.base_datos.Model.Usuario
 
 class UsuariosRepository(private val usuariosDao: UsuariosDAO) {
 
-    // Inserta un nuevo usuario
+    // Inserta un nuevo usuario con la lógica de administrador
     suspend fun insert(usuario: Usuario) {
-        usuariosDao.insert(usuario)
+        // Verifica si hay usuarios existentes en la base de datos
+        val usuariosExistentes = getAllUsuarios()
+        val esPrimerUsuario = usuariosExistentes.isEmpty()
+
+        // Si es el primer usuario, se marca como administrador
+        val usuarioConRol = if (esPrimerUsuario) {
+            usuario.copy(esAdmin = true)
+        } else {
+            usuario.copy(esAdmin = false)
+        }
+
+        // Inserta el usuario en la base de datos
+        usuariosDao.insert(usuarioConRol)
     }
 
     // Obtiene todos los usuarios

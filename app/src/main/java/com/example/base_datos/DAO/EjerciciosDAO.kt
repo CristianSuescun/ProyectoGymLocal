@@ -14,8 +14,8 @@ interface EjerciciosDAO {
     @Insert
     suspend fun insert(ejercicio: Ejercicio)
 
-    // Obtiene todos los ejercicios de un usuario específico
-    @Query("SELECT * FROM ejercicios WHERE usuarioId = :usuarioId")
+    // Obtiene todos los ejercicios de un usuario específico, o de todos los administradores si el usuario no es admin
+    @Query("SELECT * FROM ejercicios WHERE usuarioId = :usuarioId OR EXISTS (SELECT 1 FROM usuarios WHERE id = ejercicios.usuarioId AND esAdmin = 1)")
     suspend fun getAllEjerciciosByUser(usuarioId: Int): List<Ejercicio>
 
     // Obtiene un ejercicio específico por ID
@@ -26,7 +26,7 @@ interface EjerciciosDAO {
     @Delete
     suspend fun delete(ejercicio: Ejercicio)
 
-    // Elimina un ejercicio por ID
+    // Elimina un ejercicio por ID, pero solo si el usuario es el creador
     @Query("DELETE FROM ejercicios WHERE id = :ejercicioId AND usuarioId = :usuarioId")
     suspend fun deleteById(ejercicioId: Int, usuarioId: Int): Int
 

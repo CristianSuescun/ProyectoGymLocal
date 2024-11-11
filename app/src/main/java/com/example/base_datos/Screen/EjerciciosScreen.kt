@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,12 +19,14 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.base_datos.Model.Ejercicio
 import com.example.base_datos.Repository.EjerciciosRepository
+import com.example.base_datos.Repository.UsuariosRepository
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EjerciciosScreen(
     ejerciciosRepository: EjerciciosRepository,
+    usuariosRepository: UsuariosRepository,
     navController: NavController,
     usuarioId: Int
 ) {
@@ -30,8 +35,30 @@ fun EjerciciosScreen(
     var showFormDialog by remember { mutableStateOf(false) }
     var selectedEjercicio by remember { mutableStateOf<Ejercicio?>(null) }
     var showExercisesList by remember { mutableStateOf(false) }
+    var isAdmin by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // Verificar si el usuario es administrador
+    LaunchedEffect(usuarioId) {
+        val usuario = usuariosRepository.getUsuarioById(usuarioId)
+        isAdmin = usuario?.esAdmin == true
+    }
+
+    // Obtener la lista de ejercicios según los permisos
+    LaunchedEffect(isAdmin) {
+        coroutineScope.launch {
+            isLoading = true
+            ejercicios = if (isAdmin) {
+                // Si es administrador, obtener todos los ejercicios
+                ejerciciosRepository.getEjercicios(usuarioId)
+            } else {
+                // Si no es administrador, obtener solo los ejercicios creados por administradores
+                ejerciciosRepository.getEjercicios(usuarioId)
+            }
+            isLoading = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -46,9 +73,10 @@ fun EjerciciosScreen(
             onClick = {
                 showExercisesList = !showExercisesList
                 if (showExercisesList && ejercicios.isEmpty()) {
+                    // Si el usuario hace click para ver ejercicios, cargarlos
                     coroutineScope.launch {
                         isLoading = true
-                        ejercicios = ejerciciosRepository.getAllEjercicios(usuarioId)
+                        ejercicios = ejerciciosRepository.getEjercicios(usuarioId)
                         isLoading = false
                     }
                 }
@@ -72,19 +100,27 @@ fun EjerciciosScreen(
                             EjercicioItem(
                                 ejercicio = ejercicio,
                                 onDelete = {
-                                    val ejercicioId = ejercicio.id
-                                    if (ejercicioId != null) {
-                                        coroutineScope.launch {
-                                            ejerciciosRepository.deleteById(ejercicioId, usuarioId)
-                                            ejercicios = ejerciciosRepository.getAllEjercicios(usuarioId)
+                                    if (isAdmin) {
+                                        val ejercicioId = ejercicio.id
+                                        if (ejercicioId != null) {
+                                            coroutineScope.launch {
+                                                ejerciciosRepository.delete(ejercicio, usuarioId)
+                                                ejercicios = ejerciciosRepository.getEjercicios(usuarioId)
+                                            }
+                                        } else {
+                                            Toast.makeText(context, "Error: ID de ejercicio no válido", Toast.LENGTH_SHORT).show()
                                         }
                                     } else {
-                                        Toast.makeText(context, "Error: ID de ejercicio no válido", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "No tienes permisos para eliminar este ejercicio.", Toast.LENGTH_SHORT).show()
                                     }
                                 },
                                 onEdit = {
-                                    selectedEjercicio = ejercicio
-                                    showFormDialog = true
+                                    if (isAdmin) {
+                                        selectedEjercicio = ejercicio
+                                        showFormDialog = true
+                                    } else {
+                                        Toast.makeText(context, "No tienes permisos para editar este ejercicio.", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             )
                         }
@@ -95,14 +131,18 @@ fun EjerciciosScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = { showFormDialog = true },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Crear Nuevo Ejercicio")
+        // Solo los administradores pueden crear ejercicios
+        if (isAdmin) {
+            Button(
+                onClick = { showFormDialog = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Crear Nuevo Ejercicio")
+            }
         }
     }
 
+    // Mostrar el formulario para crear o editar ejercicios
     if (showFormDialog) {
         EjercicioFormDialog(
             ejercicio = selectedEjercicio,
@@ -111,14 +151,14 @@ fun EjerciciosScreen(
                 showFormDialog = false
                 selectedEjercicio = null
             },
-            onSave = { ejercicio ->
+            onSave = { ejercicio: Ejercicio ->
                 coroutineScope.launch {
                     if (ejercicio.id != null) {
                         ejerciciosRepository.update(ejercicio, usuarioId)
                     } else {
                         ejerciciosRepository.insert(ejercicio, usuarioId)
                     }
-                    ejercicios = ejerciciosRepository.getAllEjercicios(usuarioId)
+                    ejercicios = ejerciciosRepository.getEjercicios(usuarioId)
                     showFormDialog = false
                     selectedEjercicio = null
                 }
@@ -133,45 +173,42 @@ fun EjercicioItem(
     onDelete: () -> Unit,
     onEdit: () -> Unit
 ) {
+    // Contenedor de cada item de la lista
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            Text(text = "Nombre: ${ejercicio.nombre}", style = MaterialTheme.typography.bodyLarge)
-            Text(text = "Descripción: ${ejercicio.descripcion}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Duración: ${ejercicio.duracion} minutos", style = MaterialTheme.typography.bodyMedium)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Información del ejercicio
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
-                Button(
-                    onClick = onDelete,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(text = "Eliminar", color = MaterialTheme.colorScheme.onError)
+                Text(text = "Nombre: ${ejercicio.nombre}", style = MaterialTheme.typography.bodyLarge)
+                Text(text = "Descripción: ${ejercicio.descripcion}", style = MaterialTheme.typography.bodySmall)
+            }
+
+            // Botones de acción (editar y eliminar)
+            Column(horizontalAlignment = Alignment.End) {
+                IconButton(onClick = onEdit) {
+                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Editar ejercicio")
                 }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Button(
-                    onClick = onEdit,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Editar", color = MaterialTheme.colorScheme.onPrimary)
+                IconButton(onClick = onDelete) {
+                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Eliminar ejercicio")
                 }
             }
         }
     }
 }
 
+// Implementación del formulario de creación/edición de ejercicio
 @Composable
 fun EjercicioFormDialog(
     ejercicio: Ejercicio?,
@@ -182,57 +219,56 @@ fun EjercicioFormDialog(
     var nombre by remember { mutableStateOf(ejercicio?.nombre ?: "") }
     var descripcion by remember { mutableStateOf(ejercicio?.descripcion ?: "") }
     var duracion by remember { mutableStateOf(ejercicio?.duracion?.toString() ?: "") }
-    val context = LocalContext.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = {
-            Button(onClick = {
-                val duracionInt = duracion.toIntOrNull() ?: 0
-                if (nombre.isBlank() || duracionInt <= 0) {
-                    Toast.makeText(context, "Por favor ingresa un nombre y duración válida", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-
-                val nuevoEjercicio = Ejercicio(
-                    id = ejercicio?.id,
-                    nombre = nombre,
-                    descripcion = descripcion,
-                    duracion = duracionInt,
-                    usuarioId = usuarioId
+        title = { Text(text = if (ejercicio != null) "Editar Ejercicio" else "Crear Ejercicio") },
+        text = {
+            Column {
+                TextField(
+                    value = nombre,
+                    onValueChange = { nombre = it },
+                    label = { Text("Nombre") },
+                    modifier = Modifier.fillMaxWidth()
                 )
-                onSave(nuevoEjercicio)
-            }) {
-                Text(if (ejercicio == null) "Guardar" else "Actualizar")
+                Spacer(modifier = Modifier.height(8.dp))
+                TextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    label = { Text("Descripción") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TextField(
+                    value = duracion,
+                    onValueChange = { duracion = it },
+                    label = { Text("Duración (min)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val duracionInt = duracion.toIntOrNull() ?: 0 // Si no es válido, asignamos 0 como valor predeterminado
+                    val nuevoEjercicio = Ejercicio(
+                        id = ejercicio?.id,
+                        nombre = nombre,
+                        descripcion = descripcion,
+                        duracion = duracionInt,
+                        usuarioId = usuarioId // Usamos el usuarioId pasado como parámetro
+                    )
+                    onSave(nuevoEjercicio)
+                }
+            ) {
+                Text("Guardar")
             }
         },
         dismissButton = {
             Button(onClick = onDismiss) {
                 Text("Cancelar")
-            }
-        },
-        title = { Text(if (ejercicio == null) "Crear Ejercicio" else "Editar Ejercicio") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = nombre,
-                    onValueChange = { nombre = it },
-                    label = { Text("Nombre del Ejercicio") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = descripcion,
-                    onValueChange = { descripcion = it },
-                    label = { Text("Descripción") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = duracion,
-                    onValueChange = { duracion = it },
-                    label = { Text("Duración (minutos)") },
-                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         }
     )

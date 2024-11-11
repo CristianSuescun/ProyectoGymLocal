@@ -23,7 +23,7 @@ import java.util.*
 fun RutinasScreen(
     rutinasRepository: RutinasRepository,
     navController: NavController,
-    usuarioId: Int // Recibimos el ID del usuario
+    usuarioId: Int
 ) {
     var rutinas by remember { mutableStateOf<List<Rutina>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -78,6 +78,7 @@ fun RutinasScreen(
     if (showFormDialog) {
         RutinaFormDialog(
             rutina = selectedRutina,  // Enviamos la rutina seleccionada para editar
+            usuarioId = usuarioId,    // Pasamos usuarioId a la función
             onDismiss = {
                 showFormDialog = false
                 selectedRutina = null // Limpiamos la rutina seleccionada
@@ -164,6 +165,7 @@ fun RutinaItem(
 @Composable
 fun RutinaFormDialog(
     rutina: Rutina?,  // Rutina que será editada (si es nula, es para crear una nueva)
+    usuarioId: Int,   // Recibe usuarioId
     onDismiss: () -> Unit,
     onSave: (Rutina) -> Unit
 ) {
@@ -189,7 +191,7 @@ fun RutinaFormDialog(
                     dia = dia,
                     completado = completado,  // Se pasa el valor de completado
                     fechaCreacion = rutina?.fechaCreacion ?: LocalDateTime.now().toString(),
-                    usuarioId = 1 // Cambia según la lógica que necesites
+                    usuarioId = usuarioId // Aquí se utiliza el usuarioId que ahora está disponible
                 )
                 onSave(nuevaRutina)
             }) {
