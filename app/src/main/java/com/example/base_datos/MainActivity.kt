@@ -13,15 +13,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.base_datos.DAO.UsuariosDAO
 import com.example.base_datos.DAO.EjerciciosDAO
+import com.example.base_datos.DAO.RutinaEjercicioDAO  // Asegúrate de importar el DAO de RutinaEjercicio
 import com.example.base_datos.Database.AppDatabase
 import com.example.base_datos.Repository.UsuariosRepository
 import com.example.base_datos.Repository.RutinasRepository
 import com.example.base_datos.Repository.EjerciciosRepository
+import com.example.base_datos.Repository.RutinaEjercicioRepository  // Asegúrate de importar el repositorio de RutinaEjercicio
 import com.example.base_datos.Screen.LoginScreen
 import com.example.base_datos.Screen.RegistroScreen
 import com.example.base_datos.Screen.InicioScreen
 import com.example.base_datos.Screen.RutinasScreen
 import com.example.base_datos.Screen.EjerciciosScreen
+import com.example.base_datos.Screen.RutinasEjerciciosScreen  // Importa la pantalla de RutinasEjerciciosScreen
 import com.example.base_datos.ui.theme.Base_DatosTheme
 
 class MainActivity : ComponentActivity() {
@@ -30,6 +33,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var rutinasRepository: RutinasRepository
     private lateinit var ejerciciosDAO: EjerciciosDAO
     private lateinit var ejerciciosRepository: EjerciciosRepository
+    private lateinit var rutinaEjercicioRepository: RutinaEjercicioRepository  // Declare el repositorio de RutinaEjercicio
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +44,9 @@ class MainActivity : ComponentActivity() {
         usuariosRepository = UsuariosRepository(usuariosDAO)
         rutinasRepository = RutinasRepository(db.rutinasDao())
         ejerciciosDAO = db.ejerciciosDao()
+
+        // Inicializamos el repositorio de RutinaEjercicio
+        rutinaEjercicioRepository = RutinaEjercicioRepository(db.rutinaEjercicioDao())
 
         // Aquí debes pasar tanto 'ejerciciosDAO' como 'usuariosDAO' al repositorio de Ejercicios
         ejerciciosRepository = EjerciciosRepository(ejerciciosDAO, usuariosDAO)
@@ -91,7 +98,17 @@ class MainActivity : ComponentActivity() {
                                 usuarioId = usuarioId
                             )
                         }
-
+                        // Composable para la pantalla de RutinasEjerciciosScreen
+                        composable("rutinasEjerciciosScreen/{usuarioId}") { backStackEntry ->
+                            val usuarioId = backStackEntry.arguments?.getString("usuarioId")?.toInt() ?: 0
+                            RutinasEjerciciosScreen(
+                                rutinasRepository = rutinasRepository,
+                                ejerciciosRepository = ejerciciosRepository,
+                                rutinaEjercicioRepository = rutinaEjercicioRepository,  // Pasamos el repositorio de RutinaEjercicio
+                                usuarioId = usuarioId,
+                                navController = navController
+                            )
+                        }
                     }
                 }
             }

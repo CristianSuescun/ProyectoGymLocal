@@ -29,4 +29,9 @@ class RutinaEjercicioRepository(private val rutinaEjercicioDao: RutinaEjercicioD
     suspend fun update(rutinaEjercicio: RutinaEjercicio) {
         rutinaEjercicioDao.update(rutinaEjercicio)
     }
+
+    // Método para obtener todas las relaciones rutina-ejercicio
+    suspend fun getAll(): List<RutinaEjercicio> {
+        return rutinaEjercicioDao.getAll()
+    }
 }

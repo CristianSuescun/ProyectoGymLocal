@@ -29,10 +29,9 @@ fun RutinasScreen(
     var isLoading by remember { mutableStateOf(true) }
     var showFormDialog by remember { mutableStateOf(false) }
     var showRutinasSheet by remember { mutableStateOf(false) }
-    var selectedRutina by remember { mutableStateOf<Rutina?>(null) } // Rutina seleccionada para editar
+    var selectedRutina by remember { mutableStateOf<Rutina?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Cargar las rutinas al iniciar la pantalla para el usuario específico
     LaunchedEffect(usuarioId) {
         rutinas = rutinasRepository.getRutinasByUsuarioId(usuarioId) // Cargar rutinas por usuarioId
         isLoading = false
@@ -53,7 +52,6 @@ fun RutinasScreen(
             if (rutinas.isEmpty()) {
                 Text(text = "No hay rutinas disponibles", style = MaterialTheme.typography.bodyLarge)
             } else {
-                // Botón para ver rutinas (abre el Bottom Sheet)
                 Button(
                     onClick = { showRutinasSheet = true },
                     modifier = Modifier.fillMaxWidth()
@@ -65,58 +63,62 @@ fun RutinasScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Botón para crear una nueva rutina
         Button(
             onClick = { showFormDialog = true },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Crear Nueva Rutina")
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                // Navegar a la pantalla de seleccionar ejercicios
+                navController.navigate("RutinasEjerciciosScreen/$usuarioId") // Se pasa el usuarioId a la nueva pantalla
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Seleccionar Ejercicio para la Rutina")
+        }
     }
 
-    // Mostrar el formulario para crear o editar rutina
     if (showFormDialog) {
         RutinaFormDialog(
-            rutina = selectedRutina,  // Enviamos la rutina seleccionada para editar
-            usuarioId = usuarioId,    // Pasamos usuarioId a la función
+            rutina = selectedRutina,
+            usuarioId = usuarioId,
             onDismiss = {
                 showFormDialog = false
-                selectedRutina = null // Limpiamos la rutina seleccionada
+                selectedRutina = null
             },
             onSave = { rutina ->
                 coroutineScope.launch {
                     if (selectedRutina != null) {
-                        // Si hay una rutina seleccionada, actualizarla
                         rutinasRepository.update(rutina)
                     } else {
-                        // Si no hay rutina seleccionada, crear una nueva
                         rutinasRepository.insert(rutina)
                     }
-                    rutinas = rutinasRepository.getRutinasByUsuarioId(usuarioId) // Refrescar solo las rutinas del usuario
+                    rutinas = rutinasRepository.getRutinasByUsuarioId(usuarioId)
                     showFormDialog = false
-                    selectedRutina = null // Limpiamos la rutina seleccionada
+                    selectedRutina = null
                 }
             }
         )
     }
 
-    // Mostrar el ModalBottomSheet para las rutinas
     if (showRutinasSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showRutinasSheet = false }
-        ) {
+        ModalBottomSheet(onDismissRequest = { showRutinasSheet = false }) {
             LazyColumn(modifier = Modifier.padding(16.dp)) {
                 items(rutinas) { rutina ->
                     RutinaItem(
                         rutina = rutina,
                         onDelete = {
                             coroutineScope.launch {
-                                rutinasRepository.delete(rutina)  // Eliminar la rutina de la base de datos
-                                rutinas = rutinasRepository.getRutinasByUsuarioId(usuarioId)  // Refrescar solo las rutinas del usuario
+                                rutinasRepository.delete(rutina)
+                                rutinas = rutinasRepository.getRutinasByUsuarioId(usuarioId)
                             }
                         },
                         onEdit = {
-                            // Cuando se selecciona una rutina, se pasa a editar
                             selectedRutina = rutina
                             showFormDialog = true
                         }
@@ -130,8 +132,8 @@ fun RutinasScreen(
 @Composable
 fun RutinaItem(
     rutina: Rutina,
-    onDelete: () -> Unit,  // Acción para eliminar la rutina
-    onEdit: () -> Unit     // Acción para editar la rutina
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
 ) {
     Column(modifier = Modifier.padding(8.dp)) {
         Text(text = "Nombre: ${rutina.nombre}", style = MaterialTheme.typography.bodyLarge)
@@ -141,7 +143,6 @@ fun RutinaItem(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Botón de eliminar
         Button(
             onClick = onDelete,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
@@ -152,7 +153,6 @@ fun RutinaItem(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Botón de editar
         Button(
             onClick = onEdit,
             modifier = Modifier.fillMaxWidth()
@@ -164,20 +164,19 @@ fun RutinaItem(
 
 @Composable
 fun RutinaFormDialog(
-    rutina: Rutina?,  // Rutina que será editada (si es nula, es para crear una nueva)
-    usuarioId: Int,   // Recibe usuarioId
+    rutina: Rutina?,
+    usuarioId: Int,
     onDismiss: () -> Unit,
     onSave: (Rutina) -> Unit
 ) {
     var nombre by remember { mutableStateOf(rutina?.nombre ?: "") }
     var descripcion by remember { mutableStateOf(rutina?.descripcion ?: "") }
     var dia by remember { mutableStateOf(rutina?.dia ?: "Seleccionar Fecha") }
-    var completado by remember { mutableStateOf(rutina?.completado ?: false) } // Estado para saber si la rutina está completa
+    var completado by remember { mutableStateOf(rutina?.completado ?: false) }
     val context = LocalContext.current
 
-    // Mostrar el DatePickerDialog
     val datePickerDialog = createDatePickerDialog(context) { year, month, dayOfMonth ->
-        dia = "$dayOfMonth/${month + 1}/$year" // Formato de la fecha seleccionada
+        dia = "$dayOfMonth/${month + 1}/$year"
     }
 
     AlertDialog(
@@ -185,13 +184,13 @@ fun RutinaFormDialog(
         confirmButton = {
             Button(onClick = {
                 val nuevaRutina = Rutina(
-                    id = rutina?.id,  // Si es una rutina existente, mantiene su ID
+                    id = rutina?.id,
                     nombre = nombre,
                     descripcion = descripcion,
                     dia = dia,
-                    completado = completado,  // Se pasa el valor de completado
+                    completado = completado,
                     fechaCreacion = rutina?.fechaCreacion ?: LocalDateTime.now().toString(),
-                    usuarioId = usuarioId // Aquí se utiliza el usuarioId que ahora está disponible
+                    usuarioId = usuarioId
                 )
                 onSave(nuevaRutina)
             }) {
@@ -222,12 +221,11 @@ fun RutinaFormDialog(
                     onClick = { datePickerDialog.show() },
                     modifier = Modifier.padding(top = 8.dp)
                 ) {
-                    Text(dia) // Muestra la fecha seleccionada o el texto predeterminado
+                    Text(dia)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Checkbox para marcar si la rutina está completa
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked = completado,
@@ -240,7 +238,6 @@ fun RutinaFormDialog(
     )
 }
 
-// Función para crear el DatePickerDialog
 fun createDatePickerDialog(context: Context, onDateSet: (Int, Int, Int) -> Unit): DatePickerDialog {
     val calendar = Calendar.getInstance()
     return DatePickerDialog(

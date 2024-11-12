@@ -18,6 +18,10 @@ interface RutinaEjercicioDAO {
     @Query("SELECT * FROM rutina_ejercicio WHERE rutinaId = :rutinaId")
     suspend fun getEjerciciosByRutinaId(rutinaId: Int): List<RutinaEjercicio>
 
+    // Obtiene todas las relaciones rutina-ejercicio
+    @Query("SELECT * FROM rutina_ejercicio")
+    suspend fun getAll(): List<RutinaEjercicio>
+
     // Elimina una relación entre rutina y ejercicio
     @Delete
     suspend fun delete(rutinaEjercicio: RutinaEjercicio)
