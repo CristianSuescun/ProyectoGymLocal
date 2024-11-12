@@ -18,15 +18,16 @@ import com.example.base_datos.Database.AppDatabase
 import com.example.base_datos.Repository.UsuariosRepository
 import com.example.base_datos.Repository.RutinasRepository
 import com.example.base_datos.Repository.EjerciciosRepository
+import com.example.base_datos.Repository.RecordatoriosRepository
 import com.example.base_datos.Repository.RutinaEjercicioRepository  // Asegúrate de importar el repositorio de RutinaEjercicio
 import com.example.base_datos.Screen.LoginScreen
 import com.example.base_datos.Screen.RegistroScreen
 import com.example.base_datos.Screen.InicioScreen
 import com.example.base_datos.Screen.RutinasScreen
 import com.example.base_datos.Screen.EjerciciosScreen
+import com.example.base_datos.Screen.RecordatoriosScreen
 import com.example.base_datos.Screen.RutinasEjerciciosScreen  // Importa la pantalla de RutinasEjerciciosScreen
 import com.example.base_datos.ui.theme.Base_DatosTheme
-
 class MainActivity : ComponentActivity() {
     private lateinit var usuariosDAO: UsuariosDAO
     private lateinit var usuariosRepository: UsuariosRepository
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var ejerciciosDAO: EjerciciosDAO
     private lateinit var ejerciciosRepository: EjerciciosRepository
     private lateinit var rutinaEjercicioRepository: RutinaEjercicioRepository  // Declare el repositorio de RutinaEjercicio
+    private lateinit var recordatoriosRepository: RecordatoriosRepository  // Agrega el repositorio de Recordatorios
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,8 +47,9 @@ class MainActivity : ComponentActivity() {
         rutinasRepository = RutinasRepository(db.rutinasDao())
         ejerciciosDAO = db.ejerciciosDao()
 
-        // Inicializamos el repositorio de RutinaEjercicio
+        // Inicializamos el repositorio de RutinaEjercicio y Recordatorios
         rutinaEjercicioRepository = RutinaEjercicioRepository(db.rutinaEjercicioDao())
+        recordatoriosRepository = RecordatoriosRepository(db.recordatoriosDao())  // Asegúrate de tener el DAO para Recordatorios
 
         // Aquí debes pasar tanto 'ejerciciosDAO' como 'usuariosDAO' al repositorio de Ejercicios
         ejerciciosRepository = EjerciciosRepository(ejerciciosDAO, usuariosDAO)
@@ -109,9 +112,19 @@ class MainActivity : ComponentActivity() {
                                 navController = navController
                             )
                         }
+                        // Agregar la ruta para RecordatoriosScreen
+                        composable("recordatoriosScreen/{usuarioId}") { backStackEntry ->
+                            val usuarioId = backStackEntry.arguments?.getString("usuarioId")?.toInt() ?: 0
+                            RecordatoriosScreen(
+                                recordatoriosRepository = recordatoriosRepository, // Pasa el repositorio de recordatorios
+                                navController = navController,
+                                rutinaId = usuarioId // O usa rutinaId si corresponde
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
+

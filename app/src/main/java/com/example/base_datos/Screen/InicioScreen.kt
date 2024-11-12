@@ -79,7 +79,7 @@ fun InicioScreen(
 
                 // Botón para Recordatorios
                 Button(
-                    onClick = { navController.navigate("recordatoriosScreen") },
+                    onClick = { navController.navigate("recordatoriosScreen/$usuarioId") },  // Pasar usuarioId
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                 ) {
                     Text("Recordatorios")
