@@ -2,6 +2,7 @@ package com.example.base_datos.Screen
 
 import android.widget.Toast
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,9 +14,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.base_datos.Model.Ejercicio
 import com.example.base_datos.Repository.EjerciciosRepository
@@ -49,13 +53,7 @@ fun EjerciciosScreen(
     LaunchedEffect(isAdmin) {
         coroutineScope.launch {
             isLoading = true
-            ejercicios = if (isAdmin) {
-                // Si es administrador, obtener todos los ejercicios
-                ejerciciosRepository.getEjercicios(usuarioId)
-            } else {
-                // Si no es administrador, obtener solo los ejercicios creados por administradores
-                ejerciciosRepository.getEjercicios(usuarioId)
-            }
+            ejercicios = ejerciciosRepository.getEjercicios(usuarioId)
             isLoading = false
         }
     }
@@ -63,9 +61,25 @@ fun EjerciciosScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color(0xFFE3F2FD), Color(0xFF90CAF9)) // Azul claro a azul más fuerte
+                )
+            )
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Ejercicios", style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(50.dp)) // Ajuste para bajar el título
+
+        Text(
+            text = "Ejercicios",
+            style = MaterialTheme.typography.titleLarge.copy(
+                color = Color(0xFF0D47A1), // Azul oscuro
+                fontSize = 26.sp
+            ),
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -73,7 +87,6 @@ fun EjerciciosScreen(
             onClick = {
                 showExercisesList = !showExercisesList
                 if (showExercisesList && ejercicios.isEmpty()) {
-                    // Si el usuario hace click para ver ejercicios, cargarlos
                     coroutineScope.launch {
                         isLoading = true
                         ejercicios = ejerciciosRepository.getEjercicios(usuarioId)
@@ -81,9 +94,10 @@ fun EjerciciosScreen(
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF42A5F5)) // Azul
         ) {
-            Text("Ver Ejercicios")
+            Text("Ver Ejercicios", color = Color.White, fontSize = 18.sp)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -135,9 +149,10 @@ fun EjerciciosScreen(
         if (isAdmin) {
             Button(
                 onClick = { showFormDialog = true },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF42A5F5)) // Azul
             ) {
-                Text("Crear Nuevo Ejercicio")
+                Text("Crear Nuevo Ejercicio", color = Color.White, fontSize = 18.sp)
             }
         }
     }
@@ -151,7 +166,7 @@ fun EjerciciosScreen(
                 showFormDialog = false
                 selectedEjercicio = null
             },
-            onSave = { ejercicio: Ejercicio ->
+            onSave = { ejercicio ->
                 coroutineScope.launch {
                     if (ejercicio.id != null) {
                         ejerciciosRepository.update(ejercicio, usuarioId)
@@ -193,6 +208,8 @@ fun EjercicioItem(
             ) {
                 Text(text = "Nombre: ${ejercicio.nombre}", style = MaterialTheme.typography.bodyLarge)
                 Text(text = "Descripción: ${ejercicio.descripcion}", style = MaterialTheme.typography.bodySmall)
+                // Mostrar duración del ejercicio
+                Text(text = "Duración: ${ejercicio.duracion} min", style = MaterialTheme.typography.bodySmall)
             }
 
             // Botones de acción (editar y eliminar)
@@ -208,7 +225,6 @@ fun EjercicioItem(
     }
 }
 
-// Implementación del formulario de creación/edición de ejercicio
 @Composable
 fun EjercicioFormDialog(
     ejercicio: Ejercicio?,
@@ -219,12 +235,14 @@ fun EjercicioFormDialog(
     var nombre by remember { mutableStateOf(ejercicio?.nombre ?: "") }
     var descripcion by remember { mutableStateOf(ejercicio?.descripcion ?: "") }
     var duracion by remember { mutableStateOf(ejercicio?.duracion?.toString() ?: "") }
+    var errorMessage by remember { mutableStateOf("") } // Mensaje de error si faltan campos
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = if (ejercicio != null) "Editar Ejercicio" else "Crear Ejercicio") },
         text = {
             Column {
+                // Campo de nombre
                 TextField(
                     value = nombre,
                     onValueChange = { nombre = it },
@@ -232,6 +250,8 @@ fun EjercicioFormDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // Campo de descripción
                 TextField(
                     value = descripcion,
                     onValueChange = { descripcion = it },
@@ -240,6 +260,8 @@ fun EjercicioFormDialog(
                     keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // Campo de duración
                 TextField(
                     value = duracion,
                     onValueChange = { duracion = it },
@@ -247,20 +269,41 @@ fun EjercicioFormDialog(
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
                 )
+
+                // Mostrar mensaje de error si no se llenan los campos
+                if (errorMessage.isNotEmpty()) {
+                    Text(
+                        text = errorMessage,
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val duracionInt = duracion.toIntOrNull() ?: 0 // Si no es válido, asignamos 0 como valor predeterminado
-                    val nuevoEjercicio = Ejercicio(
-                        id = ejercicio?.id,
-                        nombre = nombre,
-                        descripcion = descripcion,
-                        duracion = duracionInt,
-                        usuarioId = usuarioId // Usamos el usuarioId pasado como parámetro
-                    )
-                    onSave(nuevoEjercicio)
+                    // Validar si los campos están completos y si la duración es válida
+                    if (nombre.isEmpty() || descripcion.isEmpty() || duracion.isEmpty()) {
+                        errorMessage = "Todos los campos son obligatorios."
+                    } else {
+                        val duracionInt = duracion.toIntOrNull() ?: 0
+                        if (duracionInt <= 0) {
+                            errorMessage = "La duración debe ser un número mayor que 0."
+                        } else {
+                            // Crear un nuevo ejercicio
+                            val nuevoEjercicio = Ejercicio(
+                                id = ejercicio?.id,
+                                nombre = nombre,
+                                descripcion = descripcion,
+                                duracion = duracionInt,
+                                usuarioId = usuarioId
+                            )
+                            onSave(nuevoEjercicio)
+                            onDismiss() // Cerrar el formulario después de guardar
+                        }
+                    }
                 }
             ) {
                 Text("Guardar")

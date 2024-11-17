@@ -2,6 +2,7 @@ package com.example.base_datos.Screen
 
 import android.app.DatePickerDialog
 import android.content.Context
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -25,64 +27,105 @@ fun RutinasScreen(
     navController: NavController,
     usuarioId: Int
 ) {
+    // Variables de estado para manejar los datos y la UI
     var rutinas by remember { mutableStateOf<List<Rutina>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var showFormDialog by remember { mutableStateOf(false) }
     var showRutinasSheet by remember { mutableStateOf(false) }
     var selectedRutina by remember { mutableStateOf<Rutina?>(null) }
+    var errorMessage by remember { mutableStateOf("") } // Variable para el mensaje de error
     val coroutineScope = rememberCoroutineScope()
 
+    // Carga las rutinas para un usuario específico
     LaunchedEffect(usuarioId) {
         rutinas = rutinasRepository.getRutinasByUsuarioId(usuarioId) // Cargar rutinas por usuarioId
         isLoading = false
     }
 
+    // Interfaz principal que contiene botones y manejo de estado
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+            .fillMaxSize() // Asegura que la columna ocupe todo el tamaño disponible
+            .background(Color(0xFFEBF8FF))  // Fondo entre azul claro y blanco
+            .padding(20.dp),  // Ajuste de padding para espacio alrededor
+        verticalArrangement = Arrangement.Top  // Asegura que los elementos se alineen desde la parte superior
     ) {
-        Text(text = "Rutinas", style = MaterialTheme.typography.titleLarge)
+        // Título con espacio superior
+        Text(
+            text = "Rutinas",
+            style = MaterialTheme.typography.headlineMedium.copy(color = Color(0xFF1E3A8A)),
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(top = 40.dp, bottom = 16.dp) // Ajusta el top para bajar el título
+        )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
+        // Si está cargando, mostrar un indicador de progreso
         if (isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
         } else {
+            // Si no hay rutinas, mostrar mensaje
             if (rutinas.isEmpty()) {
-                Text(text = "No hay rutinas disponibles", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = "No hay rutinas disponibles",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
             } else {
+                // Botón para mostrar las rutinas
                 Button(
                     onClick = { showRutinasSheet = true },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally) // Centra el botón
+                        .padding(bottom = 16.dp),  // Aumenta el padding inferior
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
+                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp)
                 ) {
-                    Text("Ver Rutinas")
+                    Text("Ver Rutinas", color = Color.White)
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
+        // Botón para abrir el formulario de creación de una nueva rutina
         Button(
             onClick = { showFormDialog = true },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally) // Centra el botón
+                .padding(bottom = 16.dp),  // Aumenta el padding inferior
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
+            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp)
         ) {
-            Text("Crear Nueva Rutina")
+            Text("Crear Nueva Rutina", color = Color.White)
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
+        // Botón para navegar a la pantalla de selección de ejercicios
         Button(
             onClick = {
-                // Navegar a la pantalla de seleccionar ejercicios
-                navController.navigate("RutinasEjerciciosScreen/$usuarioId") // Se pasa el usuarioId a la nueva pantalla
+                navController.navigate("RutinasEjerciciosScreen/$usuarioId")
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally) // Centra el botón
+                .padding(bottom = 16.dp),  // Aumenta el padding inferior
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
+            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp)
         ) {
-            Text("Seleccionar Ejercicio para la Rutina")
+            Text("Seleccionar Ejercicio para la Rutina", color = Color.White)
+        }
+
+        // Mostrar mensaje de error si existe
+        if (errorMessage.isNotEmpty()) {
+            Text(
+                text = errorMessage,
+                color = Color.Red,
+                style = MaterialTheme.typography.bodySmall.copy(color = Color.Red),
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(vertical = 8.dp)  // Agrega padding para mayor claridad
+            )
         }
     }
 
+    // Dialogo para agregar o editar una rutina
     if (showFormDialog) {
         RutinaFormDialog(
             rutina = selectedRutina,
@@ -90,22 +133,31 @@ fun RutinasScreen(
             onDismiss = {
                 showFormDialog = false
                 selectedRutina = null
+                errorMessage = "" // Limpiar el mensaje de error al cerrar el formulario
             },
             onSave = { rutina ->
                 coroutineScope.launch {
-                    if (selectedRutina != null) {
-                        rutinasRepository.update(rutina)
+                    // Validación de campos vacíos antes de guardar
+                    if (rutina.nombre.isEmpty() || rutina.descripcion.isNullOrEmpty() || rutina.dia.isEmpty() || rutina.dia == "Seleccionar Fecha") {
+                        errorMessage = "Por favor, ingresa todos los campos requeridos."  // Mensaje de error más claro
                     } else {
-                        rutinasRepository.insert(rutina)
+                        // Guardar o actualizar la rutina
+                        if (selectedRutina != null) {
+                            rutinasRepository.update(rutina)
+                        } else {
+                            rutinasRepository.insert(rutina)
+                        }
+                        rutinas = rutinasRepository.getRutinasByUsuarioId(usuarioId)
+                        showFormDialog = false
+                        selectedRutina = null
+                        errorMessage = "" // Limpiar mensaje de error si la rutina se guarda correctamente
                     }
-                    rutinas = rutinasRepository.getRutinasByUsuarioId(usuarioId)
-                    showFormDialog = false
-                    selectedRutina = null
                 }
             }
         )
     }
 
+    // Mostrar las rutinas en una hoja inferior modal
     if (showRutinasSheet) {
         ModalBottomSheet(onDismissRequest = { showRutinasSheet = false }) {
             LazyColumn(modifier = Modifier.padding(16.dp)) {
@@ -135,8 +187,8 @@ fun RutinaItem(
     onDelete: () -> Unit,
     onEdit: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(8.dp)) {
-        Text(text = "Nombre: ${rutina.nombre}", style = MaterialTheme.typography.bodyLarge)
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(text = "Nombre: ${rutina.nombre}", style = MaterialTheme.typography.bodyLarge.copy(color = Color(0xFFD6D8DE)))
         Text(text = "Descripción: ${rutina.descripcion}", style = MaterialTheme.typography.bodyMedium)
         Text(text = "Día: ${rutina.dia}", style = MaterialTheme.typography.bodyMedium)
         Text(text = "¿Completada? ${if (rutina.completado) "Sí" else "No"}", style = MaterialTheme.typography.bodyMedium)
@@ -145,23 +197,25 @@ fun RutinaItem(
 
         Button(
             onClick = onDelete,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = "Eliminar", color = MaterialTheme.colorScheme.onError)
+            Text(text = "Eliminar", color = Color.White)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = onEdit,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
         ) {
-            Text("Editar")
+            Text("Editar", color = Color.White)
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RutinaFormDialog(
     rutina: Rutina?,
@@ -182,19 +236,22 @@ fun RutinaFormDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            Button(onClick = {
-                val nuevaRutina = Rutina(
-                    id = rutina?.id,
-                    nombre = nombre,
-                    descripcion = descripcion,
-                    dia = dia,
-                    completado = completado,
-                    fechaCreacion = rutina?.fechaCreacion ?: LocalDateTime.now().toString(),
-                    usuarioId = usuarioId
-                )
-                onSave(nuevaRutina)
-            }) {
-                Text(if (rutina == null) "Guardar" else "Actualizar")
+            Button(
+                onClick = {
+                    val nuevaRutina = Rutina(
+                        id = rutina?.id,
+                        nombre = nombre,
+                        descripcion = descripcion,
+                        dia = dia,
+                        completado = completado,
+                        fechaCreacion = rutina?.fechaCreacion ?: LocalDateTime.now().toString(),
+                        usuarioId = usuarioId
+                    )
+                    onSave(nuevaRutina)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
+            ) {
+                Text(if (rutina == null) "Guardar" else "Actualizar", color = Color.White)
             }
         },
         dismissButton = {
@@ -202,26 +259,40 @@ fun RutinaFormDialog(
                 Text("Cancelar")
             }
         },
-        title = { Text(if (rutina == null) "Crear Rutina" else "Editar Rutina") },
+        title = {
+            Text(
+                if (rutina == null) "Crear Rutina" else "Editar Rutina",
+                style = MaterialTheme.typography.titleLarge.copy(color = Color(0xFFD1D3D5))
+            )
+        },
         text = {
             Column {
                 OutlinedTextField(
                     value = nombre,
                     onValueChange = { nombre = it },
                     label = { Text("Nombre de la Rutina") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        focusedBorderColor = Color(0xFF3B82F6),
+                        unfocusedBorderColor = Color(0xFFB3B3B3)
+                    )
                 )
                 OutlinedTextField(
                     value = descripcion,
                     onValueChange = { descripcion = it },
                     label = { Text("Descripción") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        focusedBorderColor = Color(0xFF3B82F6),
+                        unfocusedBorderColor = Color(0xFFB3B3B3)
+                    )
                 )
                 Button(
                     onClick = { datePickerDialog.show() },
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
                 ) {
-                    Text(dia)
+                    Text(dia, color = Color.White)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -238,6 +309,7 @@ fun RutinaFormDialog(
     )
 }
 
+// Función para crear el diálogo del selector de fechas
 fun createDatePickerDialog(context: Context, onDateSet: (Int, Int, Int) -> Unit): DatePickerDialog {
     val calendar = Calendar.getInstance()
     return DatePickerDialog(

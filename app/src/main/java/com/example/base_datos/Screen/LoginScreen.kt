@@ -1,66 +1,116 @@
 package com.example.base_datos.Screen
 
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.base_datos.Repository.UsuariosRepository
 import kotlinx.coroutines.launch
-
 @Composable
 fun LoginScreen(
-    usuariosRepository: UsuariosRepository, // Pasar el repositorio de usuarios
-    navController: NavController // Para la navegación al registro o a la pantalla principal
+    usuariosRepository: UsuariosRepository,
+    navController: NavController
 ) {
     val context = LocalContext.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") } // Para mensajes de error
-    var showLoading by remember { mutableStateOf(false) } // Para mostrar la carga durante el inicio de sesión
+    var errorMessage by remember { mutableStateOf("") }
+    var showLoading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color(0xFF1E88E5), Color(0xFFFFA726)) // Azul y naranja
+                )
+            )
+            .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Campo de texto para el email
+        // Título con estilo moderno
+        Text(
+            text = "Bienvenido al Gimnasio",
+            style = MaterialTheme.typography.headlineMedium.copy(
+                color = Color.White,
+                fontSize = 28.sp
+            ),
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
+
+        // Campo de correo
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Correo electrónico") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Campo de texto para la contraseña
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Contraseña") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Correo electrónico", color = Color(0xFF1565C0)) }, // Color azul más oscuro
+            leadingIcon = { Icon(imageVector = Icons.Default.Email, contentDescription = "Icono de correo", tint = Color(0xFF1565C0)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFFF5F5F5)) // Gris suave de fondo
+            ,
+            textStyle = LocalTextStyle.current.copy(color = Color.Black) // Texto negro
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Si hay un mensaje de error, lo mostramos
+        // Campo de contraseña
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Contraseña", color = Color(0xFF1565C0)) },
+            leadingIcon = { Icon(imageVector = Icons.Default.Lock, contentDescription = "Icono de contraseña", tint = Color(0xFF1565C0)) },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFFF5F5F5)), // Gris suave de fondo
+            textStyle = LocalTextStyle.current.copy(color = Color.Black) // Texto negro
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+// Mensaje de error
         if (errorMessage.isNotEmpty()) {
-            Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .background(Color(0xFFFFF9C4), RoundedCornerShape(8.dp)) // Fondo amarillo suave
+                    .padding(12.dp) // Espaciado interno para el mensaje
+            ) {
+                Text(
+                    text = errorMessage,
+                    color = Color(0xFF795548), // Color marrón suave para el texto
+                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
 
-        // Botón de iniciar sesión
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón de inicio de sesión
         Button(
             onClick = {
                 if (email.isBlank() || password.isBlank()) {
@@ -71,21 +121,17 @@ fun LoginScreen(
                 showLoading = true
                 coroutineScope.launch {
                     try {
-                        // Obtener todos los usuarios
                         val usuarios = usuariosRepository.getAllUsuarios()
-
                         if (usuarios.isEmpty()) {
                             errorMessage = "No hay usuarios registrados"
                             showLoading = false
                             return@launch
                         }
 
-                        // Verificar si existe un usuario con el email y la contraseña proporcionados
                         val usuario = usuarios.find { it.email == email && it.password == password }
                         if (usuario != null) {
-                            // Login exitoso, redirigir a la pantalla de inicio o pantalla correspondiente
                             Toast.makeText(context, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show()
-                            navController.navigate("inicioScreen/${usuario.id}") // Redirigimos a la pantalla de inicio con el usuarioId
+                            navController.navigate("inicioScreen/${usuario.id}")
                         } else {
                             errorMessage = "Usuario o contraseña incorrectos"
                         }
@@ -96,26 +142,39 @@ fun LoginScreen(
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !showLoading
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .shadow(8.dp, RoundedCornerShape(16.dp)), // Sombra para botón
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFA726)) // Naranja como color complementario
         ) {
             if (showLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.White
+                )
             } else {
-                Text("Iniciar sesión")
+                Text("Iniciar sesión", color = Color.White, fontSize = 18.sp)
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Botón para ir al registro
+        // Botón de registro
         Button(
-            onClick = {
-                navController.navigate("registroScreen") // Navegar a la pantalla de registro
-            },
-            modifier = Modifier.fillMaxWidth()
+            onClick = { navController.navigate("registroScreen") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF03A9F4)) // Azul sólido para el fondo
         ) {
-            Text("Registrarse")
+            Text(
+                text = "Registrarse",
+                color = Color.White, // Color blanco para el texto
+                fontSize = 18.sp
+            )
         }
     }
 }
+
+

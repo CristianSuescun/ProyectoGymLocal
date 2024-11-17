@@ -1,11 +1,17 @@
 package com.example.base_datos.Screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import kotlinx.coroutines.launch
 import com.example.base_datos.Repository.UsuariosRepository
@@ -13,28 +19,25 @@ import com.example.base_datos.Repository.UsuariosRepository
 @Composable
 fun InicioScreen(
     navController: NavController,
-    usuarioId: Int, // Recibir el usuarioId como parámetro
-    usuariosRepository: UsuariosRepository // Repositorio de usuarios para obtener el nombre
+    usuarioId: Int,
+    usuariosRepository: UsuariosRepository
 ) {
     var usuario by remember { mutableStateOf<com.example.base_datos.Model.Usuario?>(null) }
     var nombreUsuario by remember { mutableStateOf("Usuario") }
-    var isAdmin by remember { mutableStateOf(false) } // Variable para verificar si es administrador
-    var loading by remember { mutableStateOf(true) } // Mostrar loading mientras se obtiene el usuario
-    var errorMessage by remember { mutableStateOf("") } // Mostrar mensaje de error si no se encuentra el usuario
+    var isAdmin by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf("") }
 
-    // Lanzamos la coroutine para obtener el usuario
     LaunchedEffect(usuarioId) {
         try {
-            // Intentamos obtener el usuario de la base de datos
             usuario = usuariosRepository.getUsuarioById(usuarioId)
             if (usuario != null) {
                 nombreUsuario = usuario?.nombre ?: "Usuario"
-                isAdmin = usuario?.esAdmin == true // Verificamos si es administrador
+                isAdmin = usuario?.esAdmin == true
             } else {
                 errorMessage = "Usuario no encontrado"
             }
         } catch (e: Exception) {
-            // En caso de error, mostramos un mensaje
             errorMessage = "Error al cargar el usuario: ${e.message}"
         } finally {
             loading = false
@@ -44,54 +47,78 @@ fun InicioScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color(0xFFE3F2FD), Color(0xFF90CAF9))
+                )
+            )
             .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (loading) {
-            CircularProgressIndicator() // Mostrar indicador de carga mientras se obtiene el usuario
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         } else {
             if (errorMessage.isNotEmpty()) {
-                // Mostrar error si no se encuentra el usuario
-                Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .background(Color.White, RoundedCornerShape(8.dp))
+                        .padding(16.dp)
+                )
             } else {
                 Text(
                     text = "Bienvenido, $nombreUsuario!",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        color = Color(0xFF0D47A1),
+                        fontSize = 28.sp
+                    ),
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
 
-                // Botón para Ejercicio
+                val buttonModifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .shadow(2.dp, RoundedCornerShape(12.dp))
+
                 Button(
-                    onClick = { navController.navigate("ejerciciosScreen/$usuarioId") }, // Pasar usuarioId
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                    onClick = { navController.navigate("ejerciciosScreen/$usuarioId") },
+                    modifier = buttonModifier,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF42A5F5))
                 ) {
-                    Text("Ejercicios")
+                    Text("Ejercicios", color = Color.White, fontSize = 18.sp)
                 }
 
-                // Botón para Rutinas
                 Button(
-                    onClick = { navController.navigate("rutinasScreen/$usuarioId") },  // Pasar usuarioId
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                    onClick = { navController.navigate("rutinasScreen/$usuarioId") },
+                    modifier = buttonModifier,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5))
                 ) {
-                    Text("Rutinas")
+                    Text("Rutinas", color = Color.White, fontSize = 18.sp)
                 }
 
-                // Botón para Recordatorios
                 Button(
-                    onClick = { navController.navigate("recordatoriosScreen/$usuarioId") },  // Pasar usuarioId
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                    onClick = { navController.navigate("recordatoriosScreen/$usuarioId") },
+                    modifier = buttonModifier,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2))
                 ) {
-                    Text("Recordatorios")
+                    Text("Recordatorios", color = Color.White, fontSize = 18.sp)
                 }
 
-                // Solo los administradores pueden crear, editar o eliminar ejercicios
                 if (isAdmin) {
-                    // Si el usuario es administrador, puedes mostrar botones adicionales
                     Text(
                         text = "Tienes permisos de administrador, puedes crear, editar y eliminar ejercicios.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 24.dp)
+                        style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF004D40)),
+                        modifier = Modifier
+                            .padding(top = 24.dp)
+                            .background(Color(0xFFC8E6C9), RoundedCornerShape(8.dp))
+                            .padding(16.dp)
                     )
                 }
             }
